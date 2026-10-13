@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MyHomeSecurity.App.ViewModels"
+        xmlns:views="using:MyHomeSecurity.App.Views"
+        x:Class="MyHomeSecurity.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="My Home Security"
+        Icon="/Assets/app.ico"
+        Width="1280" Height="820"
+        MinWidth="640" MinHeight="420"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <Style Selector="TabItem">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="MinHeight" Value="38" />
+    </Style>
+    <!-- Full screen: no tab headers, just the picture. -->
+    <Style Selector="TabControl.fullscreen /template/ ItemsPresenter#PART_ItemsPresenter">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </Window.Styles>
+
+  <Panel>
+    <DockPanel IsVisible="{Binding !IsLocked}">
+      <!-- Top bar -->
+      <Border DockPanel.Dock="Top" Padding="10,6" Background="#10FFFFFF" IsVisible="{Binding !IsFullScreen}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Lock" Command="{Binding LockCommand}"
+                  ToolTip.Tip="Lock My Home Security (Ctrl+Shift+L). Live views stop; recordings carry on." />
+          <Button DockPanel.Dock="Right" Content="Help" Click="OnHelpClick" Margin="0,0,8,0"
+                  ToolTip.Tip="Keyboard shortcuts and how things work (Ctrl+Shift+H)" />
+          <Button DockPanel.Dock="Right" Classes="record" Content="{Binding RecordingsLabel}" Margin="0,0,12,0"
+                  IsVisible="{Binding HasRecordings}" ToolTip.Tip="Recordings in progress">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <ItemsControl ItemsSource="{Binding Recordings}" MinWidth="320">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecordingViewModel">
+                      <DockPanel Margin="0,4">
+                        <Button DockPanel.Dock="Right" Content="Stop" Command="{Binding StopCommand}"
+                                IsEnabled="{Binding !IsStopping}" Margin="12,0,0,0" />
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding ElapsedText}" VerticalAlignment="Center"
+                                   Margin="12,0,0,0" FontFamily="Cascadia Mono, DejaVu Sans Mono, Consolas, monospace" />
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Text="{Binding CameraName}" FontWeight="SemiBold" />
+                          <TextBlock Classes="muted" FontSize="11" Text="{Binding FileName}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Image Source="/Assets/app.png" Width="20" Height="20" />
+            <TextBlock Text="My Home Security" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding AppVersionNumber}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- Status bar -->
+      <Border DockPanel.Dock="Bottom" Padding="10,3" Background="#08FFFFFF" IsVisible="{Binding !IsFullScreen}">
+        <TextBlock Classes="muted" FontSize="12" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+      </Border>
+
+      <TabControl SelectedIndex="{Binding SelectedTabIndex}" Padding="0"
+                  Classes.fullscreen="{Binding IsFullScreen}">
+        <TabItem Header="Cameras">
+          <views:CamerasView DataContext="{Binding Cameras}" />
+        </TabItem>
+        <TabItem Header="Home Assistant">
+          <views:HomeView DataContext="{Binding Home}" />
+        </TabItem>
+        <TabItem Header="Captures">
+          <views:CapturesView DataContext="{Binding Captures}" />
+        </TabItem>
+        <TabItem Header="Settings">
+          <views:SettingsView DataContext="{Binding SettingsPage}" />
+        </TabItem>
+      </TabControl>
+    </DockPanel>
+
+    <!-- Password: first-run setup and unlock -->
+    <Grid IsVisible="{Binding IsLocked}" Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+      <Border Width="440" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="28"
+              CornerRadius="8" Background="#10FFFFFF">
+        <StackPanel Spacing="12">
+          <Image Source="/Assets/app.png" Width="56" Height="56" HorizontalAlignment="Left" />
+          <TextBlock Classes="h1" Text="{Binding LockTitle}" />
+          <TextBlock Text="{Binding LockPrompt}" TextWrapping="Wrap" Classes="muted" />
+          <TextBox x:Name="PasswordBox" PasswordChar="●" Watermark="Password" Text="{Binding Password}" />
+          <TextBox PasswordChar="●" Watermark="Confirm password"
+                   Text="{Binding ConfirmPassword}" IsVisible="{Binding IsSetupRequired}" />
+          <TextBlock Classes="error" Text="{Binding LockError}"
+                     IsVisible="{Binding LockError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <Button Classes="accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Content="{Binding UnlockButtonText}" Command="{Binding UnlockCommand}" IsDefault="True" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+          <TextBlock Classes="warning" Text="{Binding RecordingNote}"
+                     IsVisible="{Binding RecordingNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <Button Classes="link" Content="Forgot the password?" Command="{Binding ForgotPasswordCommand}"
+                  IsVisible="{Binding !IsSetupRequired}" HorizontalAlignment="Left" />
+          <TextBlock Classes="muted" FontSize="11" Text="{Binding AppVersion}" HorizontalAlignment="Right" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Panel>
+</Window>

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MyHomeSecurity.App/MyHomeSecurity.App.csproj" />
+    <Project Path="src/MyHomeSecurity.Core/MyHomeSecurity.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MyHomeSecurity.App.Tests/MyHomeSecurity.App.Tests.csproj" />
+    <Project Path="tests/MyHomeSecurity.Core.Tests/MyHomeSecurity.Core.Tests.csproj" />
+  </Folder>
+</Solution>

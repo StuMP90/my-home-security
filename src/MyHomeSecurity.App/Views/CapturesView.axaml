@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyHomeSecurity.App.ViewModels"
+             x:Class="MyHomeSecurity.App.Views.CapturesView"
+             x:DataType="vm:CapturesViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.capture">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Margin" Value="6" />
+      <Setter Property="Width" Value="240" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.capture StackPanel.hover">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.capture:pointerover StackPanel.hover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="StackPanel.hover Button">
+      <Setter Property="Background" Value="#B0202020" />
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,8,8,4">
+      <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding FilterIndex}" MinWidth="140" />
+      <Button Content="Refresh" Command="{Binding RefreshListCommand}" />
+      <Button Content="Snapshot folder" Command="{Binding OpenSnapshotFolderCommand}" />
+      <Button Content="Recording folder" Command="{Binding OpenRecordingFolderCommand}" />
+      <TextBlock Classes="muted" VerticalAlignment="Center" Margin="8,0" Text="{Binding Summary}" />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Bottom" Classes="muted" Margin="12,4" TextWrapping="Wrap" FontSize="11"
+               Text="Captures are ordinary files in the folders above. They aren't encrypted: keep the folders somewhere only you can read." />
+
+    <Panel>
+      <StackPanel IsVisible="{Binding ShowEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="440">
+        <TextBlock Classes="h1" Text="Nothing captured yet" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                   Text="Take a snapshot or start a recording from a camera's tile or its full view." />
+      </StackPanel>
+      <TextBlock Classes="muted" Text="Loading…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                 IsVisible="{Binding IsLoading}" />
+
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Items}" Margin="6">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CaptureItemViewModel">
+              <Border Classes="capture" DoubleTapped="OnItemDoubleTapped">
+                <StackPanel>
+                  <Panel Height="135" Background="Black">
+                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" IsVisible="{Binding HasThumbnail}" />
+                    <TextBlock Text="{Binding Placeholder}" Foreground="#AAAAAA" FontSize="18"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
+                    <StackPanel Classes="hover" Orientation="Horizontal" Spacing="4" Margin="6"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                      <Button Content="Open" Command="{Binding OpenCommand}" />
+                      <Button Content="Folder" Command="{Binding ShowInFolderCommand}" />
+                      <Button Content="Delete" Command="{Binding DeleteCommand}" />
+                    </StackPanel>
+                  </Panel>
+                  <StackPanel Margin="8,6" Spacing="2">
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding File.Path}" />
+                    <TextBlock Classes="muted" FontSize="11" Text="{Binding Details}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Panel>
+  </DockPanel>
+</UserControl>

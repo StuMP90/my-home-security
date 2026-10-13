@@ -1,0 +1,188 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyHomeSecurity.App.ViewModels"
+             x:Class="MyHomeSecurity.App.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.hatile">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="Margin" Value="6" />
+      <Setter Property="MinHeight" Value="120" />
+    </Style>
+    <Style Selector="Border.hatile.on">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="20" />
+      <Setter Property="Margin" Value="12" />
+      <Setter Property="MaxWidth" Value="760" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <!-- Not set up -->
+    <StackPanel IsVisible="{Binding !IsConfigured}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Spacing="12" MaxWidth="500">
+      <TextBlock Classes="h1" Text="Home Assistant isn't set up" HorizontalAlignment="Center" />
+      <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                 Text="Add your Home Assistant address and a long-lived access token in Settings to watch sensors and switch things on and off. The token is kept in this app's encrypted file." />
+      <Button Classes="accent" Content="Open Settings" HorizontalAlignment="Center" Command="{Binding OpenSettingsCommand}" />
+    </StackPanel>
+
+    <DockPanel IsVisible="{Binding IsConfigured}">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,8,8,4"
+                  IsVisible="{Binding ShowTiles}">
+        <Button Content="Add tile…" Command="{Binding AddTileCommand}" />
+        <ToggleButton Content="Arrange" IsChecked="{Binding IsArranging}" ToolTip.Tip="Reorder, edit or remove tiles" />
+        <TextBlock Classes="muted" VerticalAlignment="Center" Margin="8,0"
+                   Text="{Binding LastUpdated, StringFormat='Updated {0:HH:mm:ss}'}"
+                   IsVisible="{Binding LastUpdated, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+
+      <Border DockPanel.Dock="Top" Margin="8,4" Padding="10" CornerRadius="4" Background="#33F0B44C"
+              IsVisible="{Binding IsInsecure}">
+        <TextBlock Classes="warning" TextWrapping="Wrap" Text="{Binding InsecureText}" />
+      </Border>
+      <Border DockPanel.Dock="Top" Margin="8,4" Padding="10" CornerRadius="4" Background="#33E05050"
+              IsVisible="{Binding ConnectionError, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding ConnectionError, StringFormat='Can\'t reach Home Assistant: {0}'}" />
+      </Border>
+
+      <Panel>
+        <ScrollViewer IsVisible="{Binding ShowTiles}">
+          <ItemsControl ItemsSource="{Binding Tiles}" Margin="6">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:HaTileViewModel">
+                <Border Classes="hatile" Classes.on="{Binding IsOn}" Width="{Binding TileWidth}">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                               FontWeight="SemiBold" ToolTip.Tip="{Binding Config.EntityId}" />
+
+                    <!-- Arrange controls -->
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="4" Margin="0,8,0,0"
+                                IsVisible="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).IsArranging}">
+                      <Button Content="◀" Padding="6,2" Command="{Binding MoveEarlierCommand}" ToolTip.Tip="Move earlier" />
+                      <Button Content="▶" Padding="6,2" Command="{Binding MoveLaterCommand}" ToolTip.Tip="Move later" />
+                      <Button Content="Edit" Padding="6,2" Command="{Binding EditCommand}" />
+                      <Button Content="✕" Padding="6,2" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove" />
+                    </StackPanel>
+
+                    <TextBlock DockPanel.Dock="Bottom" Classes="error" FontSize="11" TextWrapping="Wrap"
+                               Text="{Binding Error}" IsVisible="{Binding HasError}" />
+
+                    <!-- Thermostat boost: a Boost button, or while boosting, when it ends (click to cancel) -->
+                    <Panel DockPanel.Dock="Bottom" Margin="0,6,0,0" HorizontalAlignment="Left">
+                      <Button Content="Boost…" IsVisible="{Binding CanBoost}" Command="{Binding BoostCommand}"
+                              ToolTip.Tip="Heat to a set temperature for a while" />
+                      <Button Classes="accent" Content="{Binding BoostText}" IsVisible="{Binding IsBoosting}"
+                              IsEnabled="{Binding CanCancelBoost}" Command="{Binding CancelBoostCommand}"
+                              ToolTip.Tip="Cancel boost" />
+                    </Panel>
+
+                    <!-- Value tile -->
+                    <StackPanel IsVisible="{Binding IsValue}" VerticalAlignment="Center" Margin="0,6,0,0">
+                      <TextBlock TextWrapping="Wrap" FontSize="{Binding ValueFontSize}">
+                        <Run Text="{Binding Value}" />
+                        <Run Text="{Binding Units}" FontSize="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                      </TextBlock>
+                      <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                    </StackPanel>
+
+                    <!-- Switch tile -->
+                    <StackPanel IsVisible="{Binding IsSwitch}" VerticalAlignment="Center" Spacing="6" Margin="0,6,0,0">
+                      <ToggleSwitch IsChecked="{Binding IsOn, Mode=OneWay}" IsEnabled="{Binding CanSwitch}"
+                                    Command="{Binding ToggleCommand}" OnContent="On" OffContent="Off" />
+                      <TextBlock Classes="muted" Text="Unavailable" IsVisible="{Binding IsUnavailable}" />
+                      <Slider Minimum="0" Maximum="100" Value="{Binding Brightness}" IsVisible="{Binding SupportsBrightness}"
+                              ToolTip.Tip="Brightness" />
+                    </StackPanel>
+
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <!-- After the tiles' ScrollViewer, which is on screen (and catches clicks) even when empty. -->
+        <StackPanel IsVisible="{Binding ShowNoTiles}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Spacing="12" MaxWidth="460">
+          <TextBlock Classes="h1" Text="No tiles yet" HorizontalAlignment="Center" />
+          <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                     Text="Add a tile for each sensor you want to watch or each switch you want to control." />
+          <Button Classes="accent" Content="Add tile…" HorizontalAlignment="Center" Command="{Binding AddTileCommand}" />
+        </StackPanel>
+
+        <!-- Tile editor -->
+        <ScrollViewer IsVisible="{Binding Editor, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Border Classes="panel" DataContext="{Binding Editor}" x:DataType="vm:HaTileEditorViewModel">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="h1" Text="{Binding Title}" />
+
+              <TextBlock Classes="label" Text="Entity" />
+              <TextBox Watermark="Search entities (e.g. temperature, kitchen)" Text="{Binding Filter}" />
+              <TextBlock Classes="muted" Text="Fetching entities…" IsVisible="{Binding IsLoading}" />
+              <TextBlock Classes="warning" TextWrapping="Wrap" Text="{Binding LoadError}"
+                         IsVisible="{Binding LoadError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ListBox ItemsSource="{Binding Entities}" SelectedItem="{Binding SelectedEntity}" MaxHeight="220">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HaEntityChoice">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock Text="{Binding FriendlyName}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" FontSize="11" Text="{Binding EntityId}" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Classes="muted" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 Text="{Binding Summary}" MaxWidth="200" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBox Watermark="Entity ID, e.g. sensor.living_room_temperature" Text="{Binding EntityId}" />
+
+              <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Classes="label" Text="Name" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Watermark="Defaults to the entity's name" Text="{Binding Name}" />
+
+                <TextBlock Grid.Row="1" Classes="label" Text="Show" VerticalAlignment="Center" />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Field}"
+                         ToolTip.Tip="state, attributes.temperature, or several separated by commas" />
+
+                <TextBlock Grid.Row="2" Classes="label" Text="Units" VerticalAlignment="Center" />
+                <TextBox Grid.Row="2" Grid.Column="1" Watermark="Defaults to the sensor's units" Text="{Binding Units}" />
+
+                <TextBlock Grid.Row="3" Classes="label" Text="Tile type" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedIndex="{Binding KindIndex}" />
+
+                <CheckBox Grid.Row="4" Grid.Column="1" Content="Large tile" IsChecked="{Binding IsLarge}" />
+              </Grid>
+
+              <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Attributes}" />
+              <TextBlock TextWrapping="Wrap" Text="{Binding Preview}" />
+              <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Error}"
+                         IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                <Button Classes="accent" Content="Save" Command="{Binding SaveCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </Panel>
+    </DockPanel>
+  </Panel>
+</UserControl>

@@ -1,0 +1,276 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyHomeSecurity.App.ViewModels"
+             xmlns:c="using:MyHomeSecurity.App.Controls"
+             x:Class="MyHomeSecurity.App.Views.CamerasView"
+             x:DataType="vm:CamerasViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.tile">
+      <Setter Property="Background" Value="Black" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="Margin" Value="3" />
+    </Style>
+    <Style Selector="Border.tile StackPanel.hover">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.tile:pointerover StackPanel.hover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.caption">
+      <Setter Property="Background" Value="#A0000000" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="Margin" Value="6" />
+    </Style>
+    <Style Selector="Border.rec">
+      <Setter Property="Background" Value="#C02828" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="Margin" Value="6" />
+    </Style>
+    <Style Selector="StackPanel.hover Button, StackPanel.overlay Button">
+      <Setter Property="Background" Value="#B0202020" />
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="20" />
+      <Setter Property="Margin" Value="12" />
+      <Setter Property="MaxWidth" Value="760" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <!-- Toolbar for the grid -->
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,8,8,4"
+                IsVisible="{Binding !IsLive}">
+      <Button Content="Add camera…" Command="{Binding AddCameraCommand}" />
+      <Button Content="Find cameras…" Command="{Binding FindCamerasCommand}" />
+      <ToggleButton Content="Arrange" IsChecked="{Binding IsArranging}" IsVisible="{Binding IsGrid}"
+                    ToolTip.Tip="Reorder, edit or remove cameras" />
+    </StackPanel>
+
+    <Border DockPanel.Dock="Top" Margin="8,4" Padding="10" CornerRadius="4" Background="#33F0B44C"
+            IsVisible="{Binding FfmpegMissing}">
+      <TextBlock Classes="warning" Text="{Binding FfmpegMissingText}" />
+    </Border>
+
+    <Panel>
+      <!-- No cameras yet -->
+      <StackPanel IsVisible="{Binding ShowEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Spacing="12" MaxWidth="480">
+        <TextBlock Classes="h1" Text="No cameras yet" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                   Text="Find cameras on your network, or add one by its address. Camera logins are stored only in this app's encrypted file." />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Button Classes="accent" Content="Find cameras…" Command="{Binding FindCamerasCommand}" />
+          <Button Content="Add camera…" Command="{Binding AddCameraCommand}" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Grid of all cameras -->
+      <ItemsControl ItemsSource="{Binding Tiles}" IsVisible="{Binding IsGrid}" Margin="5">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid x:DataType="vm:CamerasViewModel" Columns="{Binding GridColumns}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CameraTileViewModel">
+            <Border Classes="tile" DoubleTapped="OnTileDoubleTapped"
+                    ToolTip.Tip="Double-click to view full size">
+              <Panel>
+                <!-- The last picture stays until the stream's first frame, so switching tab back isn't blank. -->
+                <c:VideoView Source="{Binding Stream}" Placeholder="{Binding LastFrame}" />
+                <Border Classes="caption" IsVisible="{Binding ShowStatus}" Margin="12"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding StatusText}" TextAlignment="Center" TextWrapping="Wrap" Opacity="0.85" />
+                </Border>
+                <Border Classes="caption" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                  <TextBlock Text="{Binding Name}" FontSize="12" />
+                </Border>
+                <Border Classes="rec" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        IsVisible="{Binding IsRecording}">
+                  <TextBlock Text="● REC" FontSize="11" FontWeight="SemiBold" />
+                </Border>
+                <!-- Quick actions on hover -->
+                <StackPanel Classes="hover" Orientation="Horizontal" Spacing="4" Margin="6"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            IsVisible="{Binding Enabled}">
+                  <Button Content="Snapshot" Command="{Binding SnapshotCommand}"
+                          IsEnabled="{Binding !IsTakingSnapshot}" ToolTip.Tip="Save a full-resolution picture" />
+                  <Button Content="Record" IsVisible="{Binding !IsRecording}" Command="{Binding ToggleRecordingCommand}"
+                          ToolTip.Tip="Record the main stream to a file" />
+                  <Button Classes="record" Content="Stop" IsVisible="{Binding IsRecording}"
+                          Command="{Binding ToggleRecordingCommand}" />
+                  <Button Content="Open" Command="{Binding OpenLiveCommand}" />
+                </StackPanel>
+                <!-- Arranging -->
+                <StackPanel Classes="overlay" Orientation="Horizontal" Spacing="4" Margin="6"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            IsVisible="{Binding $parent[ItemsControl].((vm:CamerasViewModel)DataContext).IsArranging}">
+                  <Button Content="◀" Command="{Binding MoveEarlierCommand}" ToolTip.Tip="Move earlier" />
+                  <Button Content="▶" Command="{Binding MoveLaterCommand}" ToolTip.Tip="Move later" />
+                  <Button Content="Edit…" Command="{Binding EditCommand}" />
+                  <Button Content="Remove…" Command="{Binding DeleteCommand}" />
+                </StackPanel>
+              </Panel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- One camera full size -->
+      <Grid IsVisible="{Binding IsLive}" RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="8,8,8,4"
+                    IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsFullScreen}">
+          <Button Content="← All cameras" Command="{Binding CloseLiveCommand}" ToolTip.Tip="Back to the grid (Esc)" />
+          <Button Content="‹" Command="{Binding PreviousCameraCommand}" ToolTip.Tip="Previous camera (Left arrow)" />
+          <Button Content="›" Command="{Binding NextCameraCommand}" ToolTip.Tip="Next camera (Right arrow)" />
+          <TextBlock Classes="h2" Margin="8,0" VerticalAlignment="Center" Text="{Binding LiveTile.Name, FallbackValue=''}" />
+          <Button Content="Snapshot" Command="{Binding LiveSnapshotCommand}" ToolTip.Tip="Save a full-resolution picture" />
+          <Button Content="Record" IsVisible="{Binding !LiveIsRecording}" Command="{Binding LiveToggleRecordingCommand}" />
+          <Button Classes="record" Content="Stop recording" IsVisible="{Binding LiveIsRecording}"
+                  Command="{Binding LiveToggleRecordingCommand}" />
+          <Button Content="Full screen" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFullScreenCommand}"
+                  ToolTip.Tip="Full screen (F11, double-click the picture)" />
+        </StackPanel>
+        <Panel Grid.Row="1" Background="Black" DoubleTapped="OnLiveDoubleTapped">
+          <c:VideoView Source="{Binding LiveStream}" Placeholder="{Binding LiveLastFrame}" />
+          <Border Classes="caption" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="ShowLiveStatus" />
+                <Binding Path="LiveStatusText" Converter="{x:Static StringConverters.IsNotNullOrEmpty}" />
+              </MultiBinding>
+            </Border.IsVisible>
+            <TextBlock Text="{Binding LiveStatusText}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.85" />
+          </Border>
+          <Border Classes="rec" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding LiveIsRecording}">
+            <TextBlock Text="● REC" FontWeight="SemiBold" />
+          </Border>
+        </Panel>
+      </Grid>
+
+      <!-- Camera editor -->
+      <ScrollViewer IsVisible="{Binding Editor, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <Border Classes="panel" DataContext="{Binding Editor}" x:DataType="vm:CameraEditorViewModel">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h1" Text="{Binding Title}" />
+            <TextBlock Classes="muted" Text="{Binding DeviceText}" IsVisible="{Binding DeviceText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+              <TextBlock Classes="label" Grid.Row="0" Text="Name" />
+              <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Watermark="Front door" />
+              <TextBlock Classes="label" Grid.Row="1" Text="Type" />
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedIndex="{Binding KindIndex}"
+                        HorizontalAlignment="Stretch" />
+              <TextBlock Classes="label" Grid.Row="2" Text="Address" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Host}" Watermark="192.168.1.50" />
+              <TextBlock Classes="label" Grid.Row="3" Text="Port" />
+              <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding Port}" Minimum="1" Maximum="65535"
+                             Increment="1" FormatString="0" HorizontalAlignment="Left" Width="160" />
+              <TextBlock Classes="label" Grid.Row="4" Text="Username" />
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Username}" />
+              <TextBlock Classes="label" Grid.Row="5" Text="Password" />
+              <DockPanel Grid.Row="5" Grid.Column="1">
+                <CheckBox DockPanel.Dock="Right" Margin="8,0,0,0" Content="Show" IsChecked="{Binding ShowPassword}" />
+                <TextBox Text="{Binding Password}" PasswordChar="{Binding PasswordChar}" />
+              </DockPanel>
+            </Grid>
+
+            <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
+                       Text="Tapo cameras: create a camera account in the Tapo app (Camera settings → Advanced → Camera account) and use that here, not your TP-Link login." />
+
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="8" IsVisible="{Binding IsRtsp}">
+              <TextBlock Classes="label" Grid.Row="0" Text="Main stream path" />
+              <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MainPath}" Watermark="/stream1"
+                       ToolTip.Tip="Full resolution: used for the single-camera view, snapshots and recordings" />
+              <TextBlock Classes="label" Grid.Row="1" Text="Grid stream path" />
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SubPath}" Watermark="/stream2"
+                       ToolTip.Tip="Low resolution: used for the grid, which keeps the load down. Leave empty if the camera has only one stream." />
+            </Grid>
+            <Grid ColumnDefinitions="150,*" IsVisible="{Binding IsMjpeg}">
+              <TextBlock Classes="label" Text="Picture path" />
+              <TextBox Grid.Column="1" Text="{Binding MjpegPath}" Watermark="/videostream.cgi" />
+            </Grid>
+
+            <CheckBox Content="Show this camera" IsChecked="{Binding Enabled}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Test connection" Command="{Binding TestCommand}" IsEnabled="{Binding IsIdle}" />
+              <Button Content="Look up streams (ONVIF)" Command="{Binding LookupStreamsCommand}" IsEnabled="{Binding IsIdle}"
+                      IsVisible="{Binding IsRtsp}" ToolTip.Tip="Ask the camera for its stream paths" />
+              <Button Content="Preview" Command="{Binding TogglePreviewCommand}" />
+              <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsWorking}" Width="80" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding ResultText}" IsVisible="{Binding HasResult}" TextWrapping="Wrap"
+                       Classes.error="{Binding ResultIsError}" />
+
+            <Panel Height="240" Background="Black" IsVisible="{Binding PreviewStream, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <c:VideoView Source="{Binding PreviewStream}" />
+              <TextBlock Text="{Binding PreviewStatus}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         TextWrapping="Wrap" Margin="12" Opacity="0.75" />
+            </Panel>
+
+            <TextBlock Classes="error" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Content="Cancel" Command="{Binding CancelCommand}" />
+              <Button Classes="accent" Content="Save" Command="{Binding SaveCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- Finding cameras -->
+      <ScrollViewer IsVisible="{Binding Discovery, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <Border Classes="panel" DataContext="{Binding Discovery}" x:DataType="vm:DiscoveryViewModel">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h1" Text="Find cameras" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="Looks only on your local network: ONVIF discovery, then a check of the usual camera ports on each address. Nothing is sent outside your network." />
+            <StackPanel Spacing="4" IsVisible="{Binding IsSearching}">
+              <TextBlock Text="Searching…" />
+              <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" />
+            </StackPanel>
+            <TextBlock Classes="error" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <TextBlock TextWrapping="Wrap" IsVisible="{Binding ShowNothingFound}"
+                       Text="No cameras were found. Check the camera is on the same network as this computer and that RTSP / ONVIF is turned on (Tapo: create a camera account first), or add it by its address." />
+            <ItemsControl ItemsSource="{Binding Results}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DiscoveredCameraViewModel">
+                  <Border Padding="10" Margin="0,3" CornerRadius="4" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" VerticalAlignment="Center" Content="{Binding AddText}"
+                              Command="{Binding AddCommand}" />
+                      <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock FontWeight="SemiBold" Text="{Binding Host}" />
+                          <TextBlock Classes="muted" Text="(already added)" IsVisible="{Binding AlreadyAdded}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                        <TextBlock Classes="muted" FontSize="12" Text="{Binding Source}" />
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Content="Stop" Command="{Binding CancelCommand}" IsVisible="{Binding IsSearching}" />
+              <Button Content="Search again" Command="{Binding SearchAgainCommand}" IsVisible="{Binding IsIdle}" />
+              <Button Content="Add by address…" Command="{Binding AddManuallyCommand}" />
+              <Button Content="Close" Command="{Binding CloseCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+    </Panel>
+  </DockPanel>
+</UserControl>

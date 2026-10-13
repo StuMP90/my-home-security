@@ -1,0 +1,170 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyHomeSecurity.App.ViewModels"
+             x:Class="MyHomeSecurity.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.section">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+    <Style Selector="Grid.form">
+      <Setter Property="RowSpacing" Value="10" />
+      <Setter Property="ColumnSpacing" Value="12" />
+    </Style>
+    <Style Selector="Grid.form > TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Padding="12,8" BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Text="{Binding SaveMessage}" />
+        <TextBlock Classes="muted" VerticalAlignment="Center" Text="Unsaved changes" IsVisible="{Binding HasChanges}" />
+        <Button Content="Undo changes" Command="{Binding RevertCommand}" IsEnabled="{Binding HasChanges}" />
+        <Button Classes="accent" Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding HasChanges}" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer>
+      <StackPanel Spacing="14" Margin="16" MaxWidth="820" HorizontalAlignment="Left">
+
+        <!-- Home Assistant -->
+        <Border Classes="section">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Home Assistant" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="Create a long-lived access token in Home Assistant (your profile → Security). It's stored only in this app's encrypted file and is sent only to the address below." />
+            <Grid Classes="form" ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto">
+              <TextBlock Classes="label" Text="Address" />
+              <TextBox Grid.Column="1" Watermark="http://homeassistant.local:8123" Text="{Binding HaServerUrl}" />
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Access token" />
+              <DockPanel Grid.Row="1" Grid.Column="1">
+                <CheckBox DockPanel.Dock="Right" Content="Show" Margin="8,0,0,0" IsChecked="{Binding ShowToken}" />
+                <TextBox Text="{Binding HaToken}" PasswordChar="{Binding TokenChar}" />
+              </DockPanel>
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Refresh every (seconds)" />
+              <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding HaPollSeconds}" Minimum="0.5" Maximum="300"
+                             Increment="0.5" FormatString="0.#" HorizontalAlignment="Left" Width="150" />
+            </Grid>
+            <TextBlock Classes="warning" TextWrapping="Wrap" IsVisible="{Binding IsInsecure}"
+                       Text="This http:// address leaves your home network, so the token would cross the internet unencrypted. Use https://." />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="Test connection" Command="{Binding TestHomeAssistantCommand}" IsEnabled="{Binding !IsTesting}" />
+              <TextBlock VerticalAlignment="Center" Classes="muted" Text="Testing…" IsVisible="{Binding IsTesting}" />
+            </StackPanel>
+            <TextBlock TextWrapping="Wrap" Text="{Binding HaResult}" IsVisible="{Binding HasHaResult}"
+                       Classes.error="{Binding HaResultIsError}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Video -->
+        <Border Classes="section">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Video and system load" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="Cameras stream only while they're on screen. The grid uses each camera's small stream; the single view uses the full one. Lower numbers mean less CPU." />
+            <Grid Classes="form" ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Classes="label" Text="Hardware decoding" />
+              <CheckBox Grid.Column="1" Content="Use the graphics card to decode video when possible" IsChecked="{Binding HardwareDecoding}" />
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Grid frames per second" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding GridFps}" Minimum="1" Maximum="30"
+                             FormatString="0" HorizontalAlignment="Left" Width="150" />
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Grid key frames only" />
+              <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding GridKeyframesOnly}"
+                        Content="Lightest: about one picture a second or two per camera" />
+
+              <TextBlock Grid.Row="3" Classes="label" Text="Single view frames per second" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Value="{Binding LiveFps}" Minimum="0" Maximum="60" FormatString="0" Width="150" />
+                <TextBlock Classes="muted" VerticalAlignment="Center" Text="0 = the camera's own rate" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="4" Classes="label" Text="Single view resolution" />
+              <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding LiveHeightNames}" SelectedIndex="{Binding LiveHeightIndex}" />
+
+              <TextBlock Grid.Row="5" Classes="label" Text="Keep grid running" />
+              <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding KeepGridRunning}"
+                        Content="Keep the grid streaming behind the single view (uses more CPU)" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Captures -->
+        <Border Classes="section">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Snapshots and recordings" />
+            <Grid Classes="form" ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Classes="label" Text="Snapshot folder" />
+              <DockPanel Grid.Column="1">
+                <Button DockPanel.Dock="Right" Content="Browse…" Margin="8,0,0,0" Command="{Binding BrowseSnapshotFolderCommand}" />
+                <TextBox Text="{Binding SnapshotFolder}" Watermark="{Binding DefaultSnapshotFolder}" />
+              </DockPanel>
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Recording folder" />
+              <DockPanel Grid.Row="1" Grid.Column="1">
+                <Button DockPanel.Dock="Right" Content="Browse…" Margin="8,0,0,0" Command="{Binding BrowseRecordingFolderCommand}" />
+                <TextBox Text="{Binding RecordingFolder}" Watermark="{Binding DefaultRecordingFolder}" />
+              </DockPanel>
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Snapshot format" />
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding SnapshotFormats}" SelectedIndex="{Binding SnapshotFormatIndex}" />
+
+              <TextBlock Grid.Row="3" Classes="label" Text="Recording format" />
+              <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding RecordingFormats}" SelectedIndex="{Binding RecordingFormatIndex}" />
+
+              <TextBlock Grid.Row="4" Classes="label" Text="Stop recordings after (minutes)" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Value="{Binding MaxRecordingMinutes}" Minimum="0" Maximum="1440" FormatString="0" Width="150" />
+                <TextBlock Classes="muted" VerticalAlignment="Center" Text="0 = no limit" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="Recordings copy the camera's video without re-encoding, so they use almost no CPU. Snapshots and recordings are ordinary, unencrypted files." />
+          </StackPanel>
+        </Border>
+
+        <!-- Security -->
+        <Border Classes="section">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Security" />
+            <Grid Classes="form" ColumnDefinitions="230,*" RowDefinitions="Auto,Auto">
+              <TextBlock Classes="label" Text="Lock after (minutes idle)" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Value="{Binding AutoLockMinutes}" Minimum="0" Maximum="1440" FormatString="0" Width="150" />
+                <TextBlock Classes="muted" VerticalAlignment="Center" Text="0 = never" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Password" />
+              <Button Grid.Row="1" Grid.Column="1" Content="Change password…" Command="{Binding ChangePasswordCommand}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- About -->
+        <Border Classes="section">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="h2" Text="About" />
+            <TextBlock Text="{Binding VersionText}" />
+            <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FfmpegStatus}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="muted" VerticalAlignment="Center" Text="{Binding DataFolder, StringFormat='Data folder: {0}'}" />
+              <Button Classes="link" Content="Open" Command="{Binding OpenDataFolderCommand}" />
+            </StackPanel>
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="No telemetry, no accounts, no cloud. The app only talks to your cameras, your Home Assistant, and (when you search) your local network." />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

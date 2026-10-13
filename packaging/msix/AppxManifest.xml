@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest template. build-msix.ps1 fills in the $(...) tokens.
+
+  For a Microsoft Store submission, IdentityName, Publisher and PublisherDisplayName must be
+  exactly the values shown in Partner Center (Product management > Product identity).
+  The Store re-signs the package, so it does not need to be signed for submission.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="$(IdentityName)"
+    Publisher="$(Publisher)"
+    Version="$(Version)"
+    ProcessorArchitecture="$(Architecture)" />
+
+  <Properties>
+    <DisplayName>My Home Security</DisplayName>
+    <PublisherDisplayName>$(PublisherDisplayName)</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+    <Description>View your home cameras and control Home Assistant, privately, with snapshots and recordings kept on your own PC.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="myhomesecurity" Executable="MyHomeSecurity.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="My Home Security"
+        Description="Home cameras and Home Assistant, kept private"
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Desktop (full trust) app: required for an Avalonia/.NET Win32 app in the Store. -->
+    <rescap:Capability Name="runFullTrust" />
+    <!-- Home Assistant, when its address is outside the home network (e.g. Nabu Casa or a domain). -->
+    <Capability Name="internetClient" />
+    <!-- The cameras and Home Assistant on the local network, camera discovery (WS-Discovery
+         multicast and the port scan, only when the user asks), and the loopback relay that hands
+         camera streams to the bundled ffmpeg without putting passwords on its command line. -->
+    <Capability Name="privateNetworkClientServer" />
+  </Capabilities>
+</Package>

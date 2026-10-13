@@ -1,0 +1,139 @@
+name: Build and Release
+
+# Pushing a tag vX.Y.Z (git tag v1.0.7 && git push origin v1.0.7) builds that version, then
+# creates the GitHub release "Release v1.0.7" with generated notes and the binaries attached.
+# Only the Linux build is made until the repository variable BUILD_WINDOWS is set to true; then
+# the Windows zip and the MSIX are built and attached too.
+# Pushes to main, pull requests and manual runs do the same tests and builds with version
+# 0.0.<run number>, kept as workflow artifacts only.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the release and upload its assets
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      msix_version: ${{ steps.version.outputs.msix_version }}
+      is_release: ${{ steps.version.outputs.is_release }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        run: packaging/ci-version.sh
+
+  # The tests need neither ffmpeg nor a display: cameras and Home Assistant are faked, and the UI
+  # tests run on Avalonia's headless platform.
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Run tests
+        run: dotnet test MyHomeSecurity.slnx --configuration Release --logger "trx;LogFilePrefix=results" --results-directory TestResults
+      # On failure: each failing test appears in the run's Annotations panel and summary.
+      - name: Report failed tests
+        if: failure()
+        run: python3 .github/scripts/test-report.py TestResults
+      - name: Keep test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults
+          retention-days: 14
+
+  linux:
+    needs: [version, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: packaging/publish-linux.sh "${{ needs.version.outputs.version }}" x64
+      # Test builds are kept for 14 days; a release's files are kept permanently on the release itself.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: myhomesecurity-linux-x64
+          path: artifacts/linux/*.tar.gz
+          retention-days: ${{ needs.version.outputs.is_release == 'true' && 30 || 14 }}
+
+  # Portable Windows zip (unzip and run), for people who don't use the Store. Built on Linux.
+  windows-zip:
+    if: vars.BUILD_WINDOWS == 'true'
+    needs: [version, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: packaging/publish-windows.sh "${{ needs.version.outputs.version }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: myhomesecurity-win-x64-zip
+          path: artifacts/windows/*.zip
+          retention-days: ${{ needs.version.outputs.is_release == 'true' && 30 || 14 }}
+
+  msix:
+    if: vars.BUILD_WINDOWS == 'true'
+    needs: [version, test]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # Unsigned: for Store submission (the Store signs it). Set the identity values from
+      # Partner Center as repository variables before submitting.
+      - name: Build MSIX
+        shell: pwsh
+        run: >
+          ./packaging/build-msix.ps1
+          -Version "${{ needs.version.outputs.msix_version }}"
+          -Architecture x64
+          -IdentityName "${{ vars.MSIX_IDENTITY_NAME || 'myhomesecurity.dev' }}"
+          -Publisher "${{ vars.MSIX_PUBLISHER || 'CN=myhomesecurity-dev' }}"
+          -PublisherDisplayName "${{ vars.MSIX_PUBLISHER_DISPLAY_NAME || 'My Home Security developer' }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: myhomesecurity-msix
+          path: artifacts/msix/*.msix
+          retention-days: ${{ needs.version.outputs.is_release == 'true' && 30 || 14 }}
+
+  release:
+    # Only for version tags, and only once every build that ran has succeeded (the Windows ones
+    # are skipped unless BUILD_WINDOWS is set).
+    if: >-
+      always() && needs.version.outputs.is_release == 'true'
+      && needs.linux.result == 'success'
+      && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    needs: [version, linux, windows-zip, msix]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Release ${{ github.ref_name }}
+          fail_on_unmatched_files: false
+          files: |
+            dist/*.msix
+            dist/*.tar.gz
+            dist/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>MyHomeSecurity.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MyHomeSecurity.Core.Tests" />
+    <InternalsVisibleTo Include="MyHomeSecurity.App" />
+    <InternalsVisibleTo Include="MyHomeSecurity.App.Tests" />
+  </ItemGroup>
+</Project>
